@@ -32,7 +32,19 @@ go install github.com/tarantino19/killport@latest
 ```
 Then just use `killport` anywhere.
 
-**🥈 Direct Download (Recommended):**
+**🥈 Automated Install (Recommended):**
+
+**macOS/Linux (one command):**
+```bash
+curl -sSL https://raw.githubusercontent.com/tarantino19/killport/main/install.sh | bash
+```
+
+**Windows (run as Administrator):**
+```cmd
+curl -o install.bat https://raw.githubusercontent.com/tarantino19/killport/main/install.bat && install.bat
+```
+
+**🥉 Manual Download:**
 
 Download the pre-built binary for your system:
 
@@ -47,12 +59,12 @@ Download the pre-built binary for your system:
 **Windows:**
 - 64-bit: [Download killport-windows-amd64.exe](https://github.com/tarantino19/killport/releases/latest/download/killport-windows-amd64.exe)
 
-After downloading:
+After manual download:
 1. Rename the file to `killport` (or `killport.exe` on Windows)
 2. Make it executable: `chmod +x killport` (macOS/Linux)
 3. Move it to a directory in your PATH (e.g., `/usr/local/bin/`)
 
-**🥉 Build from Source:**
+**🔧 Build from Source:**
 ```bash
 git clone https://github.com/tarantino19/killport.git
 cd killport

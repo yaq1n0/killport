@@ -32,24 +32,33 @@ go install github.com/tarantino19/killport@latest
 ```
 Then just use `killport` anywhere.
 
-**Mac/Linux:**
+**🥈 Direct Download (Recommended):**
+
+Download the pre-built binary for your system:
+
+**macOS:**
+- Intel Macs: [Download killport-darwin-amd64](https://github.com/tarantino19/killport/releases/latest/download/killport-darwin-amd64)
+- Apple Silicon (M1/M2): [Download killport-darwin-arm64](https://github.com/tarantino19/killport/releases/latest/download/killport-darwin-arm64)
+
+**Linux:**
+- 64-bit: [Download killport-linux-amd64](https://github.com/tarantino19/killport/releases/latest/download/killport-linux-amd64)
+- ARM64: [Download killport-linux-arm64](https://github.com/tarantino19/killport/releases/latest/download/killport-linux-arm64)
+
+**Windows:**
+- 64-bit: [Download killport-windows-amd64.exe](https://github.com/tarantino19/killport/releases/latest/download/killport-windows-amd64.exe)
+
+After downloading:
+1. Rename the file to `killport` (or `killport.exe` on Windows)
+2. Make it executable: `chmod +x killport` (macOS/Linux)
+3. Move it to a directory in your PATH (e.g., `/usr/local/bin/`)
+
+**🥉 Build from Source:**
 ```bash
 git clone https://github.com/tarantino19/killport.git
 cd killport
-./install.sh
+make build
+sudo cp bin/killport /usr/local/bin/
 ```
-
-**Windows:**
-```cmd
-git clone https://github.com/tarantino19/killport.git
-cd killport
-install.bat
-```
-
-**🥉 Manual Download:**
-1. Go to [Releases](https://github.com/tarantino19/killport/releases)
-2. Download the file for your system
-3. Put it somewhere in your PATH
 
 ---
 

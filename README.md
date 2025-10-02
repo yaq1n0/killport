@@ -4,7 +4,7 @@
 
 Works on macOS, Windows, and Linux. No setup required.
 
-## 🎯 What You Can Do (Copy & Paste These Commands)
+## What You Can Do (Copy & Paste These Commands)
 
 ```bash
 # See what's running on your ports
@@ -24,9 +24,9 @@ killport all
 
 ---
 
-## 📥 How to Install (Pick One Method)
+## How to Install (Pick One Method)
 
-**🥇 Easiest Way (If you have Go installed):**
+** Easiest Way (If you have Go installed):**
 ```bash
 go install github.com/tarantino19/killport@latest
 ```
@@ -44,7 +44,7 @@ curl -sSL https://raw.githubusercontent.com/tarantino19/killport/main/install.sh
 curl -o install.bat https://raw.githubusercontent.com/tarantino19/killport/main/install.bat && install.bat
 ```
 
-**🥉 Manual Download:**
+**Manual Download:**
 
 Download the pre-built binary for your system:
 
@@ -74,7 +74,7 @@ sudo cp bin/killport /usr/local/bin/
 
 ---
 
-## 📖 Examples (What You'll See)
+## Examples (What You'll See)
 
 ```bash
 $ killport list
@@ -124,7 +124,7 @@ Are you sure you want to kill all these processes? (y/N): y
 
 ---
 
-## ⚠️ Important Notes
+## Important Notes
 
 - **`killport all` is dangerous** - it kills ALL processes using ports
 - **Save your work first** before killing processes
@@ -134,15 +134,15 @@ Are you sure you want to kill all these processes? (y/N): y
 
 ---
 
-## 🐛 Problems?
+## Problems?
 
 [Open an issue here](https://github.com/tarantino19/killport/issues) and I'll help you out.
 
 ---
 
-## 🤓 For Developers
+## For Developers
 
-**Want to contribute or build from source?**
+**Build from source**
 
 ```bash
 git clone https://github.com/tarantino19/killport.git

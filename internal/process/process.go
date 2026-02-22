@@ -41,6 +41,24 @@ func (m *Manager) GetAllProcesses() ([]*ProcessInfo, error) {
 	return m.getAllProcessesUnix()
 }
 
+// GetAllProcessesWithConnections returns all processes on all ports including
+// non-LISTEN states (ESTABLISHED, CLOSE_WAIT, etc.) for the grouped list view.
+func (m *Manager) GetAllProcessesWithConnections() ([]*ProcessInfo, error) {
+	if m.platform.IsWindows() {
+		return m.getAllProcessesWindows()
+	}
+	return m.getAllProcessesWithConnectionsUnix()
+}
+
+// GetAllProcessesByPort returns all processes associated with a specific port,
+// including connected clients (ESTABLISHED, etc.), not just listeners.
+func (m *Manager) GetAllProcessesByPort(port string) ([]*ProcessInfo, error) {
+	if m.platform.IsWindows() {
+		return m.getAllProcessesByPortWindows(port)
+	}
+	return m.getAllProcessesByPortUnix(port)
+}
+
 func (m *Manager) KillProcess(pid string) error {
 	if m.platform.IsWindows() {
 		return m.killProcessWindows(pid)
@@ -49,7 +67,7 @@ func (m *Manager) KillProcess(pid string) error {
 }
 
 func (m *Manager) getProcessByPortUnix(port string) (*ProcessInfo, error) {
-	cmd := exec.Command("lsof", "-ti:"+port)
+	cmd := exec.Command("lsof", "-ti:"+port, "-sTCP:LISTEN")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("no process found on port %s", port)
@@ -118,40 +136,136 @@ func (m *Manager) getProcessByPortWindows(port string) (*ProcessInfo, error) {
 	return nil, fmt.Errorf("no process found on port %s", port)
 }
 
+// parseLsofLine parses a single lsof output line into a ProcessInfo.
+// Returns nil if the line cannot be parsed.
+func parseLsofLine(line string) *ProcessInfo {
+	fields := strings.Fields(line)
+	if len(fields) < 10 {
+		return nil
+	}
+
+	name := strings.ReplaceAll(fields[0], "\\x20", " ")
+	pid := fields[1]
+	// The address is the second-to-last field, status is the last
+	address := fields[len(fields)-2]
+	status := strings.Trim(fields[len(fields)-1], "()")
+
+	re := regexp.MustCompile(`:(\d+)$`)
+	matches := re.FindStringSubmatch(address)
+	if len(matches) < 2 {
+		return nil
+	}
+
+	return &ProcessInfo{
+		PID:    pid,
+		Port:   matches[1],
+		Name:   name,
+		Status: status,
+	}
+}
+
 func (m *Manager) getAllProcessesUnix() ([]*ProcessInfo, error) {
-	cmd := exec.Command("lsof", "-i", "-P", "-n")
+	cmd := exec.Command("lsof", "-i", "-P", "-n", "+c", "0")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processes: %v", err)
 	}
 
 	var processes []*ProcessInfo
+	seen := make(map[string]bool)
 	lines := strings.Split(string(output), "\n")
 
 	for _, line := range lines {
-		if strings.Contains(line, "LISTEN") {
-			fields := strings.Fields(line)
-			if len(fields) >= 9 {
-				name := fields[0]
-				pid := fields[1]
-				address := fields[8]
-
-				re := regexp.MustCompile(`:(\d+)$`)
-				matches := re.FindStringSubmatch(address)
-				if len(matches) > 1 {
-					port := matches[1]
-					processes = append(processes, &ProcessInfo{
-						PID:    pid,
-						Port:   port,
-						Name:   name,
-						Status: "LISTEN",
-					})
-				}
-			}
+		if !strings.Contains(line, "LISTEN") {
+			continue
 		}
+		proc := parseLsofLine(line)
+		if proc == nil {
+			continue
+		}
+		key := proc.PID + ":" + proc.Port
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		processes = append(processes, proc)
 	}
 
 	return processes, nil
+}
+
+// getAllProcessesWithConnectionsUnix returns all processes across all ports,
+// including ESTABLISHED, CLOSE_WAIT, etc. — not just LISTEN.
+func (m *Manager) getAllProcessesWithConnectionsUnix() ([]*ProcessInfo, error) {
+	cmd := exec.Command("lsof", "-i", "-P", "-n", "+c", "0")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processes: %v", err)
+	}
+
+	var processes []*ProcessInfo
+	seen := make(map[string]bool)
+	lines := strings.Split(string(output), "\n")
+
+	// Skip header line
+	for _, line := range lines {
+		if strings.HasPrefix(line, "COMMAND") || line == "" {
+			continue
+		}
+		proc := parseLsofLine(line)
+		if proc == nil {
+			continue
+		}
+		key := proc.PID + ":" + proc.Port + ":" + proc.Status
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		processes = append(processes, proc)
+	}
+
+	return processes, nil
+}
+
+// getAllProcessesByPortUnix returns all processes on a specific port (all states).
+func (m *Manager) getAllProcessesByPortUnix(port string) ([]*ProcessInfo, error) {
+	cmd := exec.Command("lsof", "-i:"+port, "-P", "-n", "+c", "0")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("no processes found on port %s", port)
+	}
+
+	var processes []*ProcessInfo
+	seen := make(map[string]bool)
+	lines := strings.Split(string(output), "\n")
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "COMMAND") || line == "" {
+			continue
+		}
+		proc := parseLsofLine(line)
+		if proc == nil {
+			continue
+		}
+		key := proc.PID + ":" + proc.Port + ":" + proc.Status
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		processes = append(processes, proc)
+	}
+
+	return processes, nil
+}
+
+// getAllProcessesByPortWindows returns all processes on a specific port (Windows).
+// Currently only returns LISTENING processes due to netstat parsing limitations.
+func (m *Manager) getAllProcessesByPortWindows(port string) ([]*ProcessInfo, error) {
+	proc, err := m.getProcessByPortWindows(port)
+	if err != nil {
+		return nil, err
+	}
+	return []*ProcessInfo{proc}, nil
 }
 
 func (m *Manager) getAllProcessesWindows() ([]*ProcessInfo, error) {
@@ -162,6 +276,7 @@ func (m *Manager) getAllProcessesWindows() ([]*ProcessInfo, error) {
 	}
 
 	var processes []*ProcessInfo
+	seen := make(map[string]bool)
 	lines := strings.Split(string(output), "\n")
 
 	for _, line := range lines {
@@ -174,6 +289,12 @@ func (m *Manager) getAllProcessesWindows() ([]*ProcessInfo, error) {
 				parts := strings.Split(address, ":")
 				if len(parts) >= 2 {
 					port := parts[len(parts)-1]
+
+					key := pid + ":" + port
+					if seen[key] {
+						continue
+					}
+					seen[key] = true
 
 					nameCmd := exec.Command("tasklist", "/fi", "PID eq "+pid, "/fo", "csv", "/nh")
 					nameOutput, _ := nameCmd.Output()
@@ -226,7 +347,7 @@ func (m *Manager) KillAllProcessesByPort(port string) error {
 }
 
 func (m *Manager) killAllProcessesByPortUnix(port string) error {
-	cmd := exec.Command("lsof", "-ti:"+port)
+	cmd := exec.Command("lsof", "-ti:"+port, "-sTCP:LISTEN")
 	output, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("no process found on port %s", port)

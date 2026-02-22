@@ -47,8 +47,14 @@ func runAll(cmd *cobra.Command, args []string) {
 
 	successCount := 0
 	failureCount := 0
+	killed := make(map[string]bool)
 
 	for _, processInfo := range processes {
+		if killed[processInfo.PID] {
+			continue
+		}
+		killed[processInfo.PID] = true
+
 		err := manager.KillProcess(processInfo.PID)
 		if err != nil {
 			formatter.Error(fmt.Sprintf("Failed to kill %s (PID: %s, Port: %s) - %v",

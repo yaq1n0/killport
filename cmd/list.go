@@ -10,7 +10,7 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all active ports",
-	Long:  "Display all processes currently listening on ports",
+	Long:  "Display all processes currently using ports, grouped by port",
 	Run:   runList,
 }
 
@@ -18,11 +18,11 @@ func runList(cmd *cobra.Command, args []string) {
 	manager := process.NewManager()
 	formatter := output.NewFormatter()
 
-	processes, err := manager.GetAllProcesses()
+	processes, err := manager.GetAllProcessesWithConnections()
 	if err != nil {
 		formatter.Error("Failed to get process list: " + err.Error())
 		return
 	}
 
-	formatter.PrintProcessTable(processes)
+	formatter.PrintGroupedProcessTable(processes)
 }

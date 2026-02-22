@@ -2,6 +2,8 @@ package output
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
 
 	"github.com/tarantino19/killport/internal/process"
 
@@ -53,10 +55,68 @@ func (f *Formatter) PrintProcessTable(processes []*process.ProcessInfo) {
 	fmt.Printf("%-8s %-8s %-20s %s\n", "---", "----", "------------", "------")
 
 	for _, proc := range processes {
-		name := proc.Name
-		if len(name) > 20 {
-			name = name[:17] + "..."
-		}
+		name := truncateName(proc.Name, 20)
 		fmt.Printf("%-8s %-8s %-20s %s\n", proc.PID, proc.Port, name, proc.Status)
 	}
+}
+
+// PrintGroupedProcessTable displays processes grouped by port, sorted numerically.
+// Within each port group, LISTEN processes are shown first, then others.
+func (f *Formatter) PrintGroupedProcessTable(processes []*process.ProcessInfo) {
+	if len(processes) == 0 {
+		f.Warning("No processes found")
+		return
+	}
+
+	// Group by port
+	groups := make(map[string][]*process.ProcessInfo)
+	for _, proc := range processes {
+		groups[proc.Port] = append(groups[proc.Port], proc)
+	}
+
+	// Sort ports numerically
+	ports := make([]string, 0, len(groups))
+	for port := range groups {
+		ports = append(ports, port)
+	}
+	sort.Slice(ports, func(i, j int) bool {
+		pi, _ := strconv.Atoi(ports[i])
+		pj, _ := strconv.Atoi(ports[j])
+		return pi < pj
+	})
+
+	f.Info("Active ports:")
+	fmt.Println()
+
+	for _, port := range ports {
+		procs := groups[port]
+
+		// Sort: LISTEN first, then by PID
+		sort.Slice(procs, func(i, j int) bool {
+			if isListen(procs[i].Status) != isListen(procs[j].Status) {
+				return isListen(procs[i].Status)
+			}
+			return procs[i].PID < procs[j].PID
+		})
+
+		fmt.Printf("Port %s:\n", port)
+		fmt.Printf("  %-8s %-24s %s\n", "PID", "Process Name", "Status")
+
+		for _, proc := range procs {
+			name := truncateName(proc.Name, 24)
+			fmt.Printf("  %-8s %-24s %s\n", proc.PID, name, proc.Status)
+		}
+		fmt.Println()
+	}
+}
+
+func truncateName(name string, maxLen int) string {
+	if len(name) > maxLen {
+		return name[:maxLen-3] + "..."
+	}
+	return name
+}
+
+func isListen(status string) bool {
+	return status == "LISTEN" || status == "LISTENING"
 }
